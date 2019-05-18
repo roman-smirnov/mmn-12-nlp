@@ -10,7 +10,7 @@ import re
 
 # project supplied imports
 from submission_specs.SubmissionSpec12 import SubmissionSpec12
-
+import json
 
 class Submission(SubmissionSpec12):
     """ a contrived poorely performing solution for question one of this Maman """
@@ -22,9 +22,23 @@ class Submission(SubmissionSpec12):
         self.transitions = {}
 
     def _estimate_emission_probabilites(self, annotated_sentences):
-        # print('ANNOTATED SENTENCES:\n', annotated_sentences)
-        # print(type(annotated_sentences[5][0])) [ [ () ] ]
-        pass
+        for sentence in annotated_sentences:
+            for couple in sentence:
+                word = couple[0]
+                type = couple[1]
+
+                if type not in self.emission:
+                    self.emission[type] = {}
+
+                if word in self.emission[type]:
+                    self.emission[type][word] += 1
+                else:
+                    self.emission[type][word] = 1
+        print(self.emission)
+
+        f = open('dict.txt', 'w')
+        f.write(json.dumps(self.emission))
+        f.close()
 
     def _estimate_transition_probabilites(self, annotated_sentences):
         words = [p[0] for s in annotated_sentences for p in s]
