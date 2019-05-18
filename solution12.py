@@ -12,6 +12,7 @@ import re
 from submission_specs.SubmissionSpec12 import SubmissionSpec12
 import json
 
+
 class Submission(SubmissionSpec12):
     """ a contrived poorely performing solution for question one of this Maman """
 
@@ -42,16 +43,17 @@ class Submission(SubmissionSpec12):
             for word2 in self.emission[type2]:
                 self.emission[type2][word2] = self.emission[type2][word2] / types_count[type2]
 
-        f = open('probability.txt', 'w')
-        f.write(json.dumps(self.emission))
-        f.close()
+        # f = open('probability.txt', 'w')
+        # f.write(json.dumps(self.emission))
+        # f.close()
 
     def _estimate_transition_probabilites(self, annotated_sentences):
-        words = [p[0] for s in annotated_sentences for p in s]
-        # for s in annotated_sentences:
-        # print(len(words.count()))
-
-        pass
+        # words = [p[0] for s in annotated_sentences for p in s]
+        successors = {tag: {t: 0 for t in self.tag_set} for tag in self.tag_set}
+        for s in annotated_sentences:
+            for u, v in list(zip(s[:-1], s[1:])):
+                successors[u[1]][v[1]] += 1
+        pprint(successors)
 
     def train(self, annotated_sentences):
         """ trains the HMM model (computes the probability distributions) """
