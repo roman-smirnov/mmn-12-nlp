@@ -20,7 +20,7 @@ class Submission(SubmissionSpec12):
         super().__init__()
         self.tag_set = 'ADJ ADP PUNCT ADV AUX SYM INTJ CCONJ X NOUN DET PROPN NUM VERB PART PRON SCONJ'.split()
         self.emission = {}
-        self.transitions = {}
+        self.transitions = {tag: {t: 0 for t in self.tag_set} for tag in self.tag_set}
 
     def _estimate_emission_probabilites(self, annotated_sentences):
         types_count = {}
@@ -48,12 +48,17 @@ class Submission(SubmissionSpec12):
         # f.close()
 
     def _estimate_transition_probabilites(self, annotated_sentences):
-        # words = [p[0] for s in annotated_sentences for p in s]
         successors = {tag: {t: 0 for t in self.tag_set} for tag in self.tag_set}
         for s in annotated_sentences:
             for u, v in list(zip(s[:-1], s[1:])):
                 successors[u[1]][v[1]] += 1
-        pprint(successors)
+
+        for t in self.tag_set:
+            suc_sum = sum(successors[t].values())
+            for ts in self.tag_set:
+                self.transitions[t][ts] = successors[t][ts]/suc_sum
+
+        pprint(self.transitions)
 
     def train(self, annotated_sentences):
         """ trains the HMM model (computes the probability distributions) """
