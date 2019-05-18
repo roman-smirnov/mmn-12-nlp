@@ -22,6 +22,7 @@ class Submission(SubmissionSpec12):
         self.transitions = {}
 
     def _estimate_emission_probabilites(self, annotated_sentences):
+        types_count = {}
         for sentence in annotated_sentences:
             for couple in sentence:
                 word = couple[0]
@@ -29,14 +30,19 @@ class Submission(SubmissionSpec12):
 
                 if type not in self.emission:
                     self.emission[type] = {}
+                    types_count[type] = 0
+                types_count[type] += 1
 
                 if word in self.emission[type]:
                     self.emission[type][word] += 1
                 else:
                     self.emission[type][word] = 1
-        print(self.emission)
 
-        f = open('dict.txt', 'w')
+        for type2 in self.emission:
+            for word2 in self.emission[type2]:
+                self.emission[type2][word2] = self.emission[type2][word2] / types_count[type2]
+
+        f = open('probability.txt', 'w')
         f.write(json.dumps(self.emission))
         f.close()
 
