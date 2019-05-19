@@ -20,17 +20,17 @@ class Submission(SubmissionSpec12):
         super().__init__()
         self.tag_set = 'ADJ ADP PUNCT ADV AUX SYM INTJ CCONJ X NOUN DET PROPN NUM VERB PART PRON SCONJ'.split()
         self.emission = {}
-        self.labels = {}
+        self.tags = {}
         self.words = {}
         self.transitions = {tag: {t: 0 for t in self.tag_set} for tag in self.tag_set}
-        self.labels_counter = {}
+        self.tags_counter = {}
         self.words_counter = {}
         self.total_words = 0
 
     def _estimate_emission_probabilites(self, annotated_sentences):
         for word in self.emission:
-            for type in self.emission[word]:
-                self.emission[word][type] = self.emission[word][type] / self.labels_counter[type]
+            for tag in self.emission[word]:
+                self.emission[word][tag] = self.emission[word][tag] / self.tags_counter[tag]
 
         f = open('probability.txt', 'w')
         f.write(json.dumps(self.emission))
@@ -40,12 +40,12 @@ class Submission(SubmissionSpec12):
         for sentence in annotated_sentences:
             for couple in sentence:
                 word = couple[0]
-                type = couple[1]
+                tag = couple[1]
                 self.total_words += 1
 
-                if type not in self.labels_counter:
-                    self.labels_counter[type] = 0
-                self.labels_counter[type] += 1
+                if tag not in self.tags_counter:
+                    self.tags_counter[tag] = 0
+                self.tags_counter[tag] += 1
 
                 if word not in self.words_counter:
                     self.words_counter[word] = 0
@@ -54,9 +54,9 @@ class Submission(SubmissionSpec12):
                 if word not in self.emission:
                     self.emission[word] = {}
 
-                if type not in self.emission[word]:
-                    self.emission[word][type] = 0
-                self.emission[word][type] += 1
+                if tag not in self.emission[word]:
+                    self.emission[word][tag] = 0
+                self.emission[word][tag] += 1
         # f = open('counts.txt', 'w')
         # f.write(json.dumps(self.emission))
         # f.close()
@@ -66,24 +66,44 @@ class Submission(SubmissionSpec12):
         # f.write(json.dumps(self.words_counter))
         # f.close()
 
-    def _find_max_conditional_probabilty(self, word):
+    def _find_max_conditional_probabilty(self, before_word, word):
+        if before_word == '<s>':
+            return self._calculate_max_conditional_probabilty(word)
+        
+        if word not in self.emission:
+            return random.choice(self.tag_set)
+
+        before_tag = self._calculate_max_conditional_probabilty(before_word)
+
+        max_probabilty = 0
+        curr_tag = random.choice(self.tag_set)
+        for tag in self.emission[word]:
+            transition_probabilty = self.transitions[before_tag][tag]
+            tag_probabilty_by_word = self.emission[word][tag] * self.tags[tag] / self.words[word]
+            probabilty = transition_probabilty * tag_probabilty_by_word
+            if probabilty > max_probabilty:
+                max_probabilty = probabilty
+                curr_tag = tag
+        return curr_tag
+
+        # current_tag = self._calculate_conditional_probabilty(word)
+
+    def _calculate_max_conditional_probabilty(self, word):
         if word not in self.emission:
             random.choice(self.tag_set)
 
         max_probabilty = 0
-        curr_label = random.choice(self.tag_set)
-        for label in self.emission[word]:
-            probabilty = self.emission[word][label] * self.labels[label] / self.words[word]
+        curr_tag = random.choice(self.tag_set)
+        for tag in self.emission[word]:
+            probabilty = self.emission[word][tag] * self.tags[tag] / self.words[word]
             if probabilty > max_probabilty:
                 max_probabilty = probabilty
-                curr_label = label
+                curr_tag = tag
+        return curr_tag
 
-        return curr_label
-
-
-    def _probabilty_label(self):
-        for label in self.labels_counter:
-            self.labels[label] = self.labels_counter[label] / self.total_words
+    def _probabilty_tag(self):
+        for tag in self.tags_counter:
+            self.tags[tag] = self.tags_counter[tag] / self.total_words
 
     def _probabilty_word(self):
         for word in self.words_counter:
@@ -98,9 +118,11 @@ class Submission(SubmissionSpec12):
         for t in self.tag_set:
             suc_sum = sum(successors[t].values())
             for ts in self.tag_set:
-                self.transitions[t][ts] = successors[t][ts]/suc_sum
+                self.transitions[t][ts] = successors[t][ts] / suc_sum
 
-        pprint(self.transitions)
+        # f = open('words.txt', 'w')
+        # f.write(json.dumps(self.transitions))
+        # f.close()
 
     def train(self, annotated_sentences):
         """ trains the HMM model (computes the probability distributions) """
@@ -108,11 +130,14 @@ class Submission(SubmissionSpec12):
         self._counters(annotated_sentences)
         self._estimate_emission_probabilites(annotated_sentences)
         self._estimate_transition_probabilites(annotated_sentences)
-        self._probabilty_label()
+        self._probabilty_tag()
         self._probabilty_word()
         return self
 
     def predict(self, sentence):
-        prediction = [self._find_max_conditional_probabilty(segment) for segment in sentence]
+        with_start_sentence = ['<s>'] + sentence
+        prediction = [self._find_max_conditional_probabilty(s0, s1) for s0, s1 in
+                      list(zip(with_start_sentence[:-1], with_start_sentence[1:]))]
+        # print(len(prediction))
         assert (len(prediction) == len(sentence))
         return prediction
