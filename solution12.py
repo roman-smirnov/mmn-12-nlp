@@ -66,14 +66,9 @@ class Submission(SubmissionSpec12):
         # f.write(json.dumps(self.words_counter))
         # f.close()
 
-    def _find_max_conditional_probabilty(self, before_word, word):
-        if before_word == '<s>':
-            return self._calculate_max_conditional_probabilty(word)
-        
+    def _find_max_conditional_probabilty(self, before_tag, word):
         if word not in self.emission:
             return random.choice(self.tag_set)
-
-        before_tag = self._calculate_max_conditional_probabilty(before_word)
 
         max_probabilty = 0
         curr_tag = random.choice(self.tag_set)
@@ -85,8 +80,6 @@ class Submission(SubmissionSpec12):
                 max_probabilty = probabilty
                 curr_tag = tag
         return curr_tag
-
-        # current_tag = self._calculate_conditional_probabilty(word)
 
     def _calculate_max_conditional_probabilty(self, word):
         if word not in self.emission:
@@ -135,9 +128,12 @@ class Submission(SubmissionSpec12):
         return self
 
     def predict(self, sentence):
-        with_start_sentence = ['<s>'] + sentence
-        prediction = [self._find_max_conditional_probabilty(s0, s1) for s0, s1 in
-                      list(zip(with_start_sentence[:-1], with_start_sentence[1:]))]
+        prediction = [self._calculate_max_conditional_probabilty(sentence[0])]
+
+        for segment in sentence[1:]:
+            prev_tag = prediction[-1]
+            prediction.append(self._find_max_conditional_probabilty(prev_tag, segment))
+
         # print(len(prediction))
         assert (len(prediction) == len(sentence))
         return prediction
