@@ -32,10 +32,6 @@ class Submission(SubmissionSpec12):
             for tag in self.emission[word]:
                 self.emission[word][tag] = self.emission[word][tag] / self.tags_counter[tag]
 
-        f = open('probability.txt', 'w')
-        f.write(json.dumps(self.emission))
-        f.close()
-
     def _counters(self, annotated_sentences):
         for sentence in annotated_sentences:
             for couple in sentence:
@@ -57,48 +53,40 @@ class Submission(SubmissionSpec12):
                 if tag not in self.emission[word]:
                     self.emission[word][tag] = 0
                 self.emission[word][tag] += 1
-        # f = open('counts.txt', 'w')
-        # f.write(json.dumps(self.emission))
-        # f.close()
-        #
-        #
-        # f = open('words.txt', 'w')
-        # f.write(json.dumps(self.words_counter))
-        # f.close()
 
-    def _find_max_conditional_probabilty(self, before_tag, word):
+    def _find_max_conditional_probability_tag(self, before_tag, word):
         if word not in self.emission:
             return random.choice(self.tag_set)
 
-        max_probabilty = 0
+        max_probability = 0
         curr_tag = random.choice(self.tag_set)
         for tag in self.emission[word]:
-            transition_probabilty = self.transitions[before_tag][tag]
-            tag_probabilty_by_word = self.emission[word][tag] * self.tags[tag] / self.words[word]
-            probabilty = transition_probabilty * tag_probabilty_by_word
-            if probabilty > max_probabilty:
-                max_probabilty = probabilty
+            transition_probability = self.transitions[before_tag][tag]
+            emission_probability = self.emission[word][tag] * self.tags[tag] / self.words[word]
+            probability = transition_probability * emission_probability
+            if probability > max_probability:
+                max_probability = probability
                 curr_tag = tag
         return curr_tag
 
-    def _calculate_max_conditional_probabilty(self, word):
+    def _find_max_emission_probability_tag(self, word):
         if word not in self.emission:
             random.choice(self.tag_set)
 
-        max_probabilty = 0
+        max_probability = 0
         curr_tag = random.choice(self.tag_set)
         for tag in self.emission[word]:
-            probabilty = self.emission[word][tag] * self.tags[tag] / self.words[word]
-            if probabilty > max_probabilty:
-                max_probabilty = probabilty
+            probability = self.emission[word][tag] * self.tags[tag] / self.words[word]
+            if probability > max_probability:
+                max_probability = probability
                 curr_tag = tag
         return curr_tag
 
-    def _probabilty_tag(self):
+    def _probability_tag(self):
         for tag in self.tags_counter:
             self.tags[tag] = self.tags_counter[tag] / self.total_words
 
-    def _probabilty_word(self):
+    def _probability_word(self):
         for word in self.words_counter:
             self.words[word] = self.words_counter[word] / self.total_words
 
@@ -113,26 +101,22 @@ class Submission(SubmissionSpec12):
             for ts in self.tag_set:
                 self.transitions[t][ts] = successors[t][ts] / suc_sum
 
-        # f = open('words.txt', 'w')
-        # f.write(json.dumps(self.transitions))
-        # f.close()
-
     def train(self, annotated_sentences):
         """ trains the HMM model (computes the probability distributions) """
         print('training function received {} annotated sentences as training data'.format(len(annotated_sentences)))
         self._counters(annotated_sentences)
         self._estimate_emission_probabilites(annotated_sentences)
         self._estimate_transition_probabilites(annotated_sentences)
-        self._probabilty_tag()
-        self._probabilty_word()
+        self._probability_tag()
+        self._probability_word()
         return self
 
     def predict(self, sentence):
-        prediction = [self._calculate_max_conditional_probabilty(sentence[0])]
+        prediction = [self._find_max_emission_probability_tag(sentence[0])]
 
         for segment in sentence[1:]:
             prev_tag = prediction[-1]
-            prediction.append(self._find_max_conditional_probabilty(prev_tag, segment))
+            prediction.append(self._find_max_conditional_probability_tag(prev_tag, segment))
 
         # print(len(prediction))
         assert (len(prediction) == len(sentence))
